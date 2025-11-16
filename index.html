@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特里档案</title>
+    <!-- 加载Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 加载Inter字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 使用 Noto Sans SC 作为中文字体, Inter 作为英文字体 */
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            overflow: hidden; /* 隐藏滚动条，营造桌面感 */
+            user-select: none; /* 禁止选择文本，增加沉浸感 */
+        }
+        
+        /* 模拟CRT屏幕扫描线效果 */
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            z-index: 9999;
+            pointer-events: none; /* 穿透点击 */
+            animation: scanlines 0.2s linear infinite;
+        }
+
+        @keyframes scanlines {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 100%; }
+        }
+
+        /* 窗口拖动样式 */
+        .window.dragging {
+            opacity: 0.8;
+            cursor: grabbing;
+        }
+
+        /* 闪烁的光标 */
+        .blinking-cursor {
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* 激活窗口置顶 */
+        .window.active {
+            z-index: 50;
+        }
+        
+        /* 非激活窗口 */
+        .window {
+            z-index: 40;
+        }
+
+        /* 修复：将img样式移到这里 */
+        img {
+            image-rendering: -moz-crisp-edges; /* Firefox */
+            image-rendering: -webkit-optimize-contrast; /* Webkit (Chrome, Safari) */
+            image-rendering: pixelated; /* 新的标准 */
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- 1. 启动画面 (Boot Sequence) -->
+    <div id="boot-screen" class="fixed inset-0 bg-black z-[10000] flex items-center justify-center text-lg text-green-400 font-mono">
+        <div class="text-left">
+            <p id="boot-line-1">> 正在启动 TerryOS v1.3...</p>
+            <p id="boot-line-2">> 挂载磁盘 /dev/sda1...</p>
+            <p id="boot-status">> 正在连接到备份驱动器... <span class="blinking-cursor">_</span></p>
+        </div>
+
+        <!-- 启动时的语言切换 -->
+        <div classid="boot-lang-switcher" class="absolute bottom-4 right-4 text-green-400 text-sm font-mono space-x-4">
+            <button id="boot-lang-en" class="px-2 py-1 border border-green-400 hover:bg-green-400 hover:text-black">English</button>
+            <button id="boot-lang-zh" class="px-2 py-1 border border-green-400 hover:bg-green-400 hover:text-black">中文</button>
+        </div>
+    </div>
+
+    <!-- 2. 桌面环境 -->
+    <div id="desktop" class="hidden h-screen w-screen p-8" style="background: url('https://placehold.co/1920x1080/232a34/333a44?text=TerryOS') center/cover no-repeat;">
+        <!-- 桌面图标 -->
+        <div class="space-y-4">
+            <!-- 读我.txt -->
+            <div class="icon text-center w-24 cursor-pointer" data-app="readme">
+                <img src="https://placehold.co/64x64/ffffff/333333?text=TXT" alt="[文本文件图标]" class="w-16 h-16 mx-auto rounded-md border-2 border-transparent hover:border-blue-400">
+                <span class="text-white text-sm shadow-lg" data-lang-key="desktop.readme.name">读我.txt</span>
+            </div>
+
+            <!-- 邮件客户端 -->
+            <div class="icon text-center w-24 cursor-pointer" data-app="mail">
+                <img src="https://placehold.co/64x64/4a90e2/ffffff?text=MAIL" alt="[邮件图标]" class="w-16 h-16 mx-auto rounded-md border-2 border-transparent hover:border-blue-400">
+                <span class="text-white text-sm shadow-lg" data-lang-key="desktop.mail.name">邮件</span>
+            </div>
+            
+            <!-- 浏览器 -->
+            <div class="icon text-center w-24 cursor-pointer" data-app="browser">
+                <img src="https://placehold.co/64x64/34a853/ffffff?text=WEB" alt="[浏览器图标]" class="w-16 h-16 mx-auto rounded-md border-2 border-transparent hover:border-blue-400">
+                <span class="text-white text-sm shadow-lg" data-lang-key="desktop.browser.name">浏览器</span>
+            </div>
+
+            <!-- 照片 (新应用) -->
+            <div class="icon text-center w-24 cursor-pointer" data-app="photos">
+                <img src="https://placehold.co/64x64/e84393/ffffff?text=IMG" alt="[照片图标]" class="w-16 h-16 mx-auto rounded-md border-2 border-transparent hover:border-blue-400">
+                <span class="text-white text-sm shadow-lg" data-lang-key="desktop.photos.name">照片</span>
+            </div>
+
+            <!-- 加密的驱动器 -->
+            <div class="icon text-center w-24 cursor-pointer" data-app="drive">
+                <img src="https://placehold.co/64x64/fbbc05/444444?text=LOCK" alt="[加密驱动器图标]" class="w-16 h-16 mx-auto rounded-md border-2 border-transparent hover:border-blue-400">
+                <span class="text-white text-sm shadow-lg" data-lang-key="desktop.drive.name">E-DRIVE.zip</span>
+            </div>
+        </div>
+
+        <!-- 语言切换 -->
+        <div class="absolute bottom-4 right-4 bg-gray-700/50 p-2 rounded backdrop-blur-sm">
+            <button id="lang-toggle" class="px-3 py-1 text-sm text-white rounded hover:bg-gray-600" data-lang-key="langButton">English</button>
+        </div>
+    </div>
+
+    <!-- 3. 窗口模板 (隐藏) -->
+
+    <!-- 窗口: 读我.txt -->
+    <div id="window-readme" class="window hidden absolute top-1/4 left-1/4 w-11/12 md:w-1/3 bg-gray-800 rounded-lg shadow-2xl border border-gray-600" style="min-height: 250px;">
+        <!-- 标题栏 -->
+        <div class="title-bar bg-gray-700 p-2 rounded-t-lg flex justify-between items-center cursor-move">
+            <span class="font-bold text-sm" data-lang-key="readme.title">记事本 - 读我.txt</span>
+            <button class="close-btn bg-red-500 w-4 h-4 rounded-full hover:bg-red-700" data-app="readme"></button>
+        </div>
+        <!-- 内容 -->
+        <div class="p-4 font-mono text-sm text-gray-300" data-lang-key="readme.content">
+            <!-- 内容将由JS填充 -->
+        </div>
+    </div>
+
+    <!-- 窗口: 浏览器 -->
+    <div id="window-browser" class="window hidden absolute top-1/3 left-1/3 w-11/12 md:w-1/2 bg-gray-200 rounded-lg shadow-2xl border border-gray-400" style="min-height: 400px;">
+        <div class="title-bar bg-gray-300 p-2 rounded-t-lg flex justify-between items-center cursor-move">
+            <span class="font-bold text-sm text-gray-800" data-lang-key="browser.title">Terry的浏览器</span>
+            <button class="close-btn bg-red-500 w-4 h-4 rounded-full hover:bg-red-700" data-app="browser"></button>
+        </div>
+        <!-- 浏览器内容 -->
+        <div class="p-4 text-gray-900">
+            <h2 class="text-lg font-bold mb-2" data-lang-key="browser.bookmarksTitle">书签</h2>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><a href="#" class="text-blue-600 hover:underline" data-page="blog" data-lang-key="browser.bookmarks.blog">Terry的个人博客 - "亚瑟的领地"</a></li>
+                <li><a href="#" class="text-blue-600 hover:underline" data-page="news" data-lang-key="browser.bookmarks.news">本地新闻网</a></li>
+                <li><a href="#" class="text-blue-600 hover:underline" data-page="corp" data-lang-key="browser.bookmarks.corp">天幕化工 (官网)</a></li>
+                <li><a href="#" class="text-blue-600 hover:underline" data-page="work" data-lang-key="browser.bookmarks.work">[已失效] 内部员工门户</a></li>
+            </ul>
+            <hr class="my-4 border-gray-400">
+            <!-- 浏览器页面内容 -->
+            <div id="browser-content" class="bg-white p-4 rounded h-64 overflow-y-auto">
+                <!-- 内容将由JS填充 -->
+            </div>
+            <!-- 静态内容已移除，将由JS根据语言动态生成 -->
+        </div>
+    </div>
+
+    <!-- 窗口: 邮件 -->
+    <div id="window-mail" class="window hidden absolute top-1/4 left-1/4 w-11/12 md:w-1/2 bg-gray-800 rounded-lg shadow-2xl border border-gray-600" style="min-height: 400px;">
+        <div class="title-bar bg-gray-700 p-2 rounded-t-lg flex justify-between items-center cursor-move">
+            <span class="font-bold text-sm" data-lang-key="mail.title">邮件客户端</span>
+            <button class="close-btn bg-red-500 w-4 h-4 rounded-full hover:bg-red-700" data-app="mail"></button>
+        </div>
+        <!-- 邮件内容 -->
+        <div class="flex h-full">
+            <!-- 邮件列表 -->
+            <div class="w-1/3 bg-gray-700 p-2 overflow-y-auto" style="min-height: 360px;">
+                <h2 class="font-bold mb-2" data-lang-key="mail.inbox">收件箱 (5)</h2>
+                <div class="mail-item p-2 rounded hover:bg-blue-500 cursor-pointer" data-mail="mail1">
+                    <p class="font-bold text-sm" data-lang-key="mail.list.mail1.from">来自: 主管</p>
+                    <p class="text-xs truncate" data-lang-key="mail.list.mail1.subject">主题: 最终警告</p>
+                </div>
+                <div class="mail-item p-2 rounded hover:bg-blue-500 cursor-pointer" data-mail="mail2">
+                    <p class="font-bold text-sm" data-lang-key="mail.list.mail2.from">来自: J</p>
+                    <p class="text-xs truncate" data-lang-key="mail.list.mail2.subject">主题: 周五晚上</p>
+                </div>
+                <div class="mail-item p-2 rounded hover:bg-blue-500 cursor-pointer" data-mail="mail3">
+                    <p class="font-bold text-sm" data-lang-key="mail.list.mail3.from">来自: [未知发件人]</p>
+                    <p class="text-xs truncate" data-lang-key="mail.list.mail3.subject">主题: 停止。</p>
+                </div>
+                <div class="mail-item p-2 rounded hover:bg-blue-500 cursor-pointer" data-mail="mail5">
+                    <p class="font-bold text-sm" data-lang-key="mail.list.mail5.from">来自: IT-Support</p>
+                    <p class="text-xs truncate" data-lang-key="mail.list.mail5.subject">主题: 网络活动标记</p>
+                </div>
+                <div class="mail-item p-2 rounded hover:bg-blue-500 cursor-pointer" data-mail="mail6">
+                    <p class="font-bold text-sm" data-lang-key="mail.list.mail6.from">来自: [未知发件人]</p>
+                    <p class="text-xs truncate" data-lang-key="mail.list.mail6.subject">主题: RE: 停止。</p>
+                </div>
+
+                <h2 class="font-bold mt-4 mb-2" data-lang-key="mail.drafts">草稿 (1)</h2>
+                <div class="mail-item p-2 rounded hover:bg-blue-500 cursor-pointer" data-mail="mail4">
+                    <p class="font-bold text-sm" data-lang-key="mail.list.mail4.to">发往: [未发送]</p>
+                    <p class="text-xs truncate" data-lang-key="mail.list.mail4.subject">主题: 证据</p>
+                </div>
+            </div>
+            <!-- 邮件正文 -->
+            <div class="w-2/3 p-4 font-mono text-sm" id="mail-content">
+                <!-- 内容将由JS填充 -->
+            </div>
+            <!-- 静态邮件正文已移除，将由JS动态生成 -->
+        </div>
+    </div>
+
+    <!-- 窗口: 照片 (新窗口) -->
+    <div id="window-photos" class="window hidden absolute top-1/3 left-1/3 w-11/12 md:w-1/2 bg-gray-800 rounded-lg shadow-2xl border border-gray-600" style="min-height: 400px;">
+        <div class="title-bar bg-gray-700 p-2 rounded-t-lg flex justify-between items-center cursor-move">
+            <span class="font-bold text-sm" data-lang-key="photos.title">照片查看器</span>
+            <button class="close-btn bg-red-500 w-4 h-4 rounded-full hover:bg-red-700" data-app="photos"></button>
+        </div>
+        <div class="p-4">
+            <h2 class="text-lg font-bold mb-4" data-lang-key="photos.header">我的相册</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- 照片1: 亚瑟 (密码线索) -->
+                <div class="text-center">
+                    <img src="https://placehold.co/150x150/78604c/ffffff?text=CAT" alt="[一只猫的照片]" class="rounded-lg shadow-md border-2 border-gray-600">
+                    <p class="text-sm mt-1 font-mono" data-lang-key="photos.items.photo1">Arthur_01.jpg</p>
+                </div>
+                <!-- 照片2: 合影 -->
+                <div class="text-center">
+                    <img src="https://placehold.co/150x150/4a90e2/ffffff?text=T+J" alt="[Terry和J在海滩的合影]" class="rounded-lg shadow-md border-2 border-gray-600">
+                    <p class="text-sm mt-1 font-mono" data-lang-key="photos.items.photo2">Beach_Trip.jpg</p>
+                </div>
+                <!-- 照片3: 工业区 -->
+                <div class="text-center">
+                    <img src="https://placehold.co/150x150/555555/dddddd?text=SMOKE" alt="[工业区烟囱]" class="rounded-lg shadow-md border-2 border-gray-600">
+                    <p class="text-sm mt-1 font-mono" data-lang-key="photos.items.photo3">Industrial_View.jpg</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 窗口: E-DRIVE -->
+    <div id="window-drive" class="window hidden absolute top-1/3 left-1/3 w-11/12 md:w-1/3 bg-gray-800 rounded-lg shadow-2xl border border-gray-600" style="min-height: 250px;">
+        <div class="title-bar bg-gray-700 p-2 rounded-t-lg flex justify-between items-center cursor-move">
+            <span class="font-bold text-sm" data-lang-key="drive.title">E-DRIVE.zip</span>
+            <button class="close-btn bg-red-500 w-4 h-4 rounded-full hover:bg-red-700" data-app="drive"></button>
+        </div>
+        <div class="p-4 font-mono text-sm">
+            <p class="text-lg mb-2" data-lang-key="drive.header">E-DRIVE 包含 1 个文件:</p>
+            <div class="flex items-center bg-gray-700 p-2 rounded">
+                <img src="https://placehold.co/32x32/c93737/ffffff?text=PDF" alt="[PDF图标]" class="w-8 h-8 mr-2">
+                <span data-lang-key="drive.filename">EVIDENCE_PACK.pdf</span>
+            </div>
+            <hr class="my-4 border-gray-600">
+            <h3 class="text-green-400 font-bold" data-lang-key="drive.noteTitle">解压文件 (来自 Terry 的备注):</h3>
+            <div data-lang-key="drive.noteBody">
+                <!-- 内容将由JS填充 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 4. 密码提示框 (Password Prompt) -->
+    <div id="password-prompt" class="hidden fixed inset-0 bg-black/70 z-[1000] flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-gray-700 p-6 rounded-lg shadow-xl w-11/12 md:w-1/4">
+            <h3 class="text-lg font-bold mb-4" id="prompt-title">需要密码</h3>
+            <p class="text-sm text-gray-300 mb-2" id="prompt-hint">提示：无</p>
+            <input type="password" id="password-input" class="w-full p-2 rounded bg-gray-800 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <p id="password-error" class="text-red-400 text-sm mt-2 hidden" data-lang-key="password.error">密码错误</p>
+            <div class="mt-4 flex justify-end space-x-2">
+                <button id="password-cancel" class="px-4 py-2 bg-gray-500 rounded hover:bg-gray-600 text-sm" data-lang-key="password.cancel">取消</button>
+                <button id="password-submit" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 text-sm" data-lang-key="password.submit">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 游戏结局画面 -->
+    <div id="end-screen" class="hidden fixed inset-0 bg-black z-[10000] flex items-center justify-center text-lg text-red-500 font-mono">
+        <div class="text-center">
+            <p class="text-2xl mb-4" data-lang-key="end.line1">[连接已断开]</p>
+            <p data-lang-key="end.line2">你找到了真相。</p>
+            <p data-lang-key="end.line3">谢谢你。</p>
+            <p class="text-sm mt-4" data-lang-key="end.line4">(按F5刷新重玩)</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- 0. 语言和翻译 ---
+            let currentLang = 'en'; // 默认语言改为 'en'
+            const translations = {
+                'zh': {
+                    langButton: "English",
+                    boot: {
+                        line1: "> 正在启动 TerryOS v1.3...",
+                        line2: "> 挂载磁盘 /dev/sda1...",
+                        line3: "> 正在连接到备份驱动器... ",
+                        line4: "> 正在验证备份完整性...",
+                        line5: "> 加载 TerryOS 核心...",
+                    },
+                    desktop: {
+                        readme: { name: "读我.txt" },
+                        mail: { name: "邮件" },
+                        browser: { name: "浏览器" },
+                        photos: { name: "照片" },
+                        drive: { name: "E-DRIVE.zip" },
+                    },
+                    readme: {
+                        title: "记事本 - 读我.txt",
+                        content: `<p>如果你读到这个，说明你进来了。</p><p>特里失踪了。已经三天了。</p><p>这是我能搞到的他电脑的最后备份。我试过，但他的邮件和关键文件都被加密了。</p><p>警方不肯立案，说他只是“度假去了”。</p><p>我知道他最近在查一些“大事”。帮我找到他。线索一定就在这些文件里。</p><p class="mt-4">- J</p>`
+                    },
+                    browser: {
+                        title: "Terry的浏览器",
+                        bookmarksTitle: "书签",
+                        bookmarks: {
+                            blog: "Terry的个人博客 - \"亚瑟的领地\"",
+                            news: "本地新闻网",
+                            corp: "天幕化工 (官网)",
+                            work: "[已失效] 内部员工门户"
+                        },
+                        default: "<p class='text-gray-500'>点击书签浏览...</p>",
+                        pages: {
+                            blog: {
+                                title: "亚瑟的领地",
+                                body: `<p class="text-gray-600 mb-4">"我只是一只叫'亚瑟'的美短的铲屎官。"</p>
+                                       <h3 class="font-bold">最新文章：终于放假了！ (2022年10月26日)</h3>
+                                       <p>J 和我终于要去海滩了！工作上的破事终于可以告一段落。希望回来时一切顺利...</p>
+                                       <h3 class="font-bold mt-4">那股怪味 (2022年10月15日)</h3>
+                                       <p>公寓窗户外面最近总飘来一股化学品味道，尤其是在晚上。J 也闻到了。就在城东工业区那边。新闻上什么都没说... 奇怪。</p>`
+                            },
+                            news: {
+                                title: "本地新闻",
+                                body: `<h3 class="font-bold">城市化学品泄漏疑云？</h3>
+                                       <p>近日有市民举报，在城东工业区闻到刺鼻气味。环保部门已介入调查，称“未发现指标异常”。</p>
+                                       <h3 class="font-bold mt-4">天幕化工荣获“年度绿色企业”</h3>
+                                       <p>本地企业天幕化工因其在环保方面的“杰出贡献”而获奖...</p>`
+                            },
+                            corp: {
+                                title: "天幕化工",
+                                body: `<p class="text-gray-700">“引领未来，守护绿色家园”</p>
+                                       <p class="mt-2">天幕化工致力于用科技创新推动可持续发展...</p>`
+                            },
+                            work: {
+                                title: "404 - 无法访问",
+                                body: `<p>该链接已失效或被移除。</p>`
+                            }
+                        }
+                    },
+                    mail: {
+                        title: "邮件客户端",
+                        inbox: "收件箱 (5)",
+                        drafts: "草稿 (1)",
+                        ui: {
+                            default: "<p class='text-gray-400'>选择一封邮件阅读。</p>",
+                            from: "来自",
+                            to: "发往",
+                            subject: "主题"
+                        },
+                        list: { // 用于侧边栏
+                            mail1: { from: "主管", subject: "最终警告" },
+                            mail2: { from: "J", subject: "周五晚上" },
+                            mail3: { from: "[未知发件人]", subject: "停止。" },
+                            mail5: { from: "IT-Support", subject: "网络活动标记" },
+                            mail6: { from: "[未知发件人]", subject: "RE: 停止。" },
+                            mail4: { to: "[未发送]", subject: "证据" }
+                        },
+                        content: { // 用于邮件正文
+                            mail1: { from: "主管", subject: "最终警告", body: "<p>特里：</p><p>你本周第三次无故缺勤。这是你的最终警告。如果明天你再不出现，我们就按自动离职处理。</p><p>另外，IT部门报告你最近有异常的公司网络访问，我们正在调查。</p>" },
+                            mail2: { from: "J", subject: "周五晚上", body: "<p>T:</p><p>别忘了周五晚上的事。老地方见。我已经等不及了！</p><p>你的假期申请批了吗？</p><p>- J</p>" },
+                            mail3: { from: "[未知发件人]", subject: "停止。", body: "<p>他们知道你在查了。</p><p>停止。否则你和你关心的人都会有危险。</p><p>这不是威胁，是忠告。</p>" },
+                            mail4: { to: "[未发送]", subject: "证据", body: "<p>...</p><p>我找到了。所有关于倾倒废料的文件都在。比我想象的还严重。</p><p>我已经把所有东西加密压缩到了E盘。密码是我们的纪念日。</p><p>如果我出了什么事，你知道该怎么做。</p><p>- T</p>" },
+                            mail5: { from: "IT-Support", subject: "网络活动标记", body: "<p>特里,</p><p>系统检测到你的账户于 10月24日 23:30 访问了内部环境报告归档库。</p><p>此为受限区域。请立刻向你的主管报告此活动，否则你的账户将被冻结。</p>" },
+                            mail6: { from: "[未知发件人]", subject: "RE: 停止。", body: "<p>你没有听从忠告。</p><p>这是最后一次。我们知道 J 住在哪。</p>" }
+                        }
+                    },
+                    photos: {
+                        title: "照片查看器",
+                        header: "我的相册",
+                        items: {
+                            photo1: "Arthur_01.jpg",
+                            photo2: "Beach_Trip.jpg",
+                            photo3: "Industrial_View.jpg"
+                        }
+                    },
+                    drive: {
+                        title: "E-DRIVE.zip",
+                        header: "E-DRIVE 包含 1 个文件:",
+                        filename: "EVIDENCE_PACK.pdf",
+                        noteTitle: "解压文件 (来自 Terry 的备注):",
+                        noteBody: `<p>我发现了[天幕化工]非法倾倒化学废料的内部文件。他们一直在伪造环保报告。</p>
+                                   <p>这就是他们试图掩盖的。我已经把原件发给了一名记者。</p>
+                                   <p>如果我回不来，把这个交给警方。</p>
+                                   <p class="mt-4">- 特里</p>`
+                    },
+                    password: {
+                        mail: {
+                            title: "邮件客户端 - 需要密码",
+                            hint: "提示：特里最喜欢的？（见浏览器或照片）"
+                        },
+                        drive: {
+                            title: "E-DRIVE.zip - 需要密码",
+                            hint: "提示：一个特殊的日子。（见邮件草稿）"
+                        },
+                        error: "密码错误",
+                        cancel: "取消",
+                        submit: "确认"
+                    },
+                    end: {
+                        line1: "[连接已断开]",
+                        line2: "你找到了真相。",
+                        line3: "谢谢你。",
+                        line4: "(按F5刷新重玩)"
+                    }
+                },
+                'en': {
+                    langButton: "中文",
+                    boot: {
+                        line1: "> Booting TerryOS v1.3...",
+                        line2: "> Mounting disk /dev/sda1...",
+                        line3: "> Connecting to backup drive... ",
+                        line4: "> Verifying backup integrity...",
+                        line5: "> Loading TerryOS Kernel...",
+                    },
+                    desktop: {
+                        readme: { name: "README.txt" },
+                        mail: { name: "Mail" },
+                        browser: { name: "Browser" },
+                        photos: { name: "Photos" },
+                        drive: { name: "E-DRIVE.zip" },
+                    },
+                    readme: {
+                        title: "Notepad - README.txt",
+                        content: `<p>If you're reading this, you're in.</p>
+                                  <p>Terry is missing. It's been three days.</p>
+                                  <p>This is the last backup of his computer I could get. I tried, but his mail and key files are encrypted.</p>
+                                  <p>The police won't file a report. Said he "just went on vacation."</p>
+                                  <p>I know he was looking into something big. Help me find him. The clues must be in these files.</p>
+                                  <p class="mt-4">- J</p>`
+                    },
+                    browser: {
+                        title: "Terry's Browser",
+                        bookmarksTitle: "Bookmarks",
+                        bookmarks: {
+                            blog: "Terry's Personal Blog - \"Arthur's Domain\"",
+                            news: "Local News Network",
+                            corp: "Sky-Chemicals (Official)",
+                            work: "[Broken] Internal Employee Portal"
+                        },
+                        default: "<p class='text-gray-500'>Click a bookmark to browse...</p>",
+                        pages: {
+                            blog: {
+                                title: "Arthur's Domain",
+                                body: `<p class="text-gray-600 mb-4">"Just the humble servant of an American Shorthair named 'Arthur'."</p>
+                                       <h3 class="font-bold">Latest Post: Vacation at last! (Oct 26, 2022)</h3>
+                                       <p>J and I are finally heading to the beach! Can finally get away from all the crap at work. Hope everything is fine when I get back...</p>
+                                       <h3 class="font-bold mt-4">That Weird Smell (Oct 15, 2022)</h3>
+                                       <p>There's been this chemical smell outside the apartment window lately, especially at night. J smelled it too. It's from the industrial park in the east. Nothing in the news... weird.</p>`
+                            },
+                            news: {
+                                title: "Local News",
+                                body: `<h3 class="font-bold">Suspected Chemical Leak in City?</h3>
+                                       <p>Citizens recently reported a pungent odor in the industrial district. The Environmental Protection Dept. has intervened, stating "no abnormal indicators were found."</p>
+                                       <h3 class="font-bold mt-4">Sky-Chemicals Awarded "Green Enterprise of the Year"</h3>
+                                       <p>Local company Sky-Chemicals was awarded for its "outstanding contributions" to environmental protection...</p>`
+                            },
+                            corp: {
+                                title: "Sky-Chemicals",
+                                body: `<p class="text-gray-700">"Leading the Future, Guarding Our Green Home"</p>
+                                       <p class="mt-2">Sky-Chemicals is dedicated to promoting sustainable development through technological innovation...</p>`
+                            },
+                            work: {
+                                title: "404 - Not Found",
+                                body: `<p>This link is broken or has been removed.</p>`
+                            }
+                        }
+                    },
+                    mail: {
+                        title: "Mail Client",
+                        inbox: "Inbox (5)",
+                        drafts: "Drafts (1)",
+                        ui: {
+                            default: "<p class='text-gray-400'>Select an email to read.</p>",
+                            from: "From",
+                            to: "To",
+                            subject: "Subject"
+                        },
+                        list: {
+                            mail1: { from: "Supervisor", subject: "Final Warning" },
+                            mail2: { from: "J", subject: "Friday Night" },
+                            mail3: { from: "[Unknown Sender]", subject: "Stop." },
+                            mail5: { from: "IT-Support", subject: "Network Activity Flagged" },
+                            mail6: { from: "[Unknown Sender]", subject: "RE: Stop." },
+                            mail4: { to: "[Unsent]", subject: "The Proof" }
+                        },
+                        content: {
+                            mail1: { from: "Supervisor", subject: "Final Warning", body: "<p>Terry:</p><p>This is your third unexcused absence this week. This is your final warning. If you do not show up tomorrow, you will be processed as a voluntary resignation.</p><p>Furthermore, IT has reported unusual access to the company network from your account. We are investigating.</p>" },
+                            mail2: { from: "J", subject: "Friday Night", body: "<p>T:</p><p>Don't forget about Friday night. See you at the usual spot. Can't wait!</p><p>Did your vacation request get approved?</p><p>- J</p>" },
+                            mail3: { from: "[Unknown Sender]", subject: "Stop.", body: "<p>They know you're looking.</p><p>Stop. Or you and the people you care about will be in danger.</p><p>This is not a threat. It's advice.</p>" },
+                            mail4: { to: "[Unsent]", subject: "The Proof", body: "<p>...</p><p>I found it. All the documents on the waste dumping. It's worse than I thought.</p><p>I've encrypted and compressed everything onto the E-Drive. The password is our anniversary.</p><p>If something happens to me, you know what to do.</p><p>- T</p>" },
+                            mail5: { from: "IT-Support", subject: "Network Activity Flagged", body: "<p>Terry,</p><p>The system detected your account accessing the internal environmental report archive on Oct 24 @ 23:30.</p><p>This is a restricted area. Please report this activity to your supervisor immediately, or your account will be frozen.</p>" },
+                            mail6: { from: "[Unknown Sender]", subject: "RE: Stop.", body: "<p>You didn't listen to the advice.</p><p>This is the last time. We know where J lives.</p>" }
+                        }
+                    },
+                    photos: {
+                        title: "Photo Viewer",
+                        header: "My Albums",
+                        items: {
+                            photo1: "Arthur_01.jpg",
+                            photo2: "Beach_Trip.jpg",
+                            photo3: "Industrial_View.jpg"
+                        }
+                    },
+                    drive: {
+                        title: "E-DRIVE.zip",
+                        header: "E-DRIVE contains 1 file:",
+                        filename: "EVIDENCE_PACK.pdf",
+                        noteTitle: "Decryption Note (from Terry):",
+                        noteBody: `<p>I found the internal documents on [Sky-Chemicals]'s illegal waste dumping. They've been faking the environmental reports.</p>
+                                   <p>This is what they're trying to cover up. I've already sent the originals to a journalist.</p>
+                                   <p>If I don't make it back, give this to the police.</p>
+                                   <p class="mt-4">- Terry</p>`
+                    },
+                    password: {
+                        mail: {
+                            title: "Mail Client - Password Required",
+                            hint: "Hint: Terry's favorite? (See Browser or Photos)"
+                        },
+                        drive: {
+                            title: "E-DRIVE.zip - Password Required",
+                            hint: "Hint: A special day. (See Mail Drafts)"
+                        },
+                        error: "Incorrect Password",
+                        cancel: "Cancel",
+                        submit: "Submit"
+                    },
+                    end: {
+                        line1: "[CONNECTION TERMINATED]",
+                        line2: "You found the truth.",
+                        line3: "Thank you.",
+                        line4: "(Press F5 to replay)"
+                    }
+                }
+            };
+
+            // --- 游戏状态 ---
+            const gameState = {
+                mailLocked: true,
+                driveLocked: true,
+                activeWindow: null, // 当前激活的窗口
+            };
+
+            const windows = document.querySelectorAll('.window');
+            const icons = document.querySelectorAll('.icon');
+            const passwordPrompt = document.getElementById('password-prompt');
+            const passwordInput = document.getElementById('password-input');
+            const passwordError = document.getElementById('password-error');
+            const passwordSubmit = document.getElementById('password-submit');
+            const passwordCancel = document.getElementById('password-cancel');
+            const promptTitle = document.getElementById('prompt-title');
+            const promptHint = document.getElementById('prompt-hint');
+            const langToggleBtn = document.getElementById('lang-toggle');
+
+            // 浏览器和邮件的内容区域
+            const browserContent = document.getElementById('browser-content');
+            const mailContent = document.getElementById('mail-content');
+
+            let activeApp = null; // 记录哪个App触发了密码框
+
+            // --- 0. 语言切换功能 ---
+            function switchLanguage(lang) {
+                currentLang = lang;
+                const langData = translations[lang];
+
+                // 更新所有带 data-lang-key 的元素
+                document.querySelectorAll('[data-lang-key]').forEach(el => {
+                    const key = el.dataset.langKey;
+                    // 使用 lodash-like 'get' a basic "get"
+                    const get = (obj, path) => path.split('.').reduce((acc, part) => acc && acc[part], obj);
+                    const text = get(langData, key);
+                    
+                    if (text) {
+                        // 特殊处理HTML内容
+                        if (key.endsWith('.content') || key.endsWith('.noteBody') || key.endsWith('.default')) {
+                            el.innerHTML = text;
+                        } else {
+                            el.innerText = text;
+                        }
+                    }
+                });
+
+                // 更新动态内容 (浏览器和邮件的默认视图)
+                browserContent.innerHTML = langData.browser.default;
+                mailContent.innerHTML = langData.mail.ui.default;
+            }
+
+            langToggleBtn.addEventListener('click', () => {
+                const newLang = currentLang === 'zh' ? 'en' : 'zh';
+                switchLanguage(newLang);
+            });
+
+
+            // --- 1. 启动游戏 ---
+            function bootGame() {
+                const bootStatus = document.getElementById('boot-status');
+                const bootLine1 = document.getElementById('boot-line-1');
+                const bootLine2 = document.getElementById('boot-line-2');
+                const bootLangEn = document.getElementById('boot-lang-en');
+                const bootLangZh = document.getElementById('boot-lang-zh');
+
+                // 更新启动画面的文本
+                function setBootLanguage(lang) {
+                    const bootData = translations[lang].boot;
+                    bootLine1.innerText = bootData.line1;
+                    bootLine2.innerText = bootData.line2;
+                    // 仅更新当前状态行的文本内容，保留光标
+                    const currentStatusText = bootStatus.innerText.includes(translations['zh'].boot.line3) ? bootData.line3 :
+                                              bootStatus.innerText.includes(translations['en'].boot.line3) ? bootData.line3 :
+                                              bootStatus.innerText.includes(translations['zh'].boot.line4) ? bootData.line4 :
+                                              bootStatus.innerText.includes(translations['en'].boot.line4) ? bootData.line4 :
+                                              bootStatus.innerText.includes(translations['zh'].boot.line5) ? bootData.line5 :
+                                              bootData.line5; // 默认为line5如果匹配失败
+                    
+                    // 保留闪烁的光标
+                    if (bootStatus.querySelector('.blinking-cursor')) {
+                        bootStatus.firstChild.nodeValue = currentStatusText;
+                    } else {
+                        bootStatus.innerText = currentStatusText;
+                    }
+                }
+
+                // 启动时设置按钮
+                bootLangEn.addEventListener('click', () => {
+                    currentLang = 'en';
+                    setBootLanguage('en');
+                });
+                bootLangZh.addEventListener('click', () => {
+                    currentLang = 'zh';
+                    setBootLanguage('zh');
+                });
+
+                // 立即设置启动文本（根据新的默认 'en'）
+                setBootLanguage(currentLang);
+                // 确保光标存在
+                if (!bootStatus.querySelector('.blinking-cursor')) {
+                    bootStatus.innerHTML = translations[currentLang].boot.line3 + ' <span class="blinking-cursor">_</span>';
+                }
+                
+
+                setTimeout(() => {
+                    // 使用 translations 动态设置文本
+                    bootStatus.innerText = translations[currentLang].boot.line4;
+                }, 1500);
+                setTimeout(() => {
+                    bootStatus.innerHTML = translations[currentLang].boot.line5 + ' <span class="blinking-cursor">_</span>';
+                }, 3000);
+                setTimeout(() => {
+                    document.getElementById('boot-screen').classList.add('hidden');
+                    document.getElementById('desktop').classList.remove('hidden');
+                    
+                    // 设置初始语言
+                    switchLanguage(currentLang);
+                    
+                    // 自动打开 "读我.txt"
+                    openWindow('readme');
+                }, 4500);
+            }
+            
+            bootGame();
+
+            // --- 2. 窗口管理 ---
+            function openWindow(appName) {
+                if (appName === 'mail' && gameState.mailLocked) {
+                    showPasswordPrompt('mail');
+                    return;
+                }
+                if (appName === 'drive' && gameState.driveLocked) {
+                    showPasswordPrompt('drive');
+                    return;
+                }
+
+                const windowEl = document.getElementById(`window-${appName}`);
+                if (windowEl) {
+                    windowEl.classList.remove('hidden');
+                    setActiveWindow(windowEl);
+                }
+            }
+
+            function closeWindow(appName) {
+                const windowEl = document.getElementById(`window-${appName}`);
+                if (windowEl) {
+                    windowEl.classList.add('hidden');
+                }
+            }
+            
+            function setActiveWindow(windowEl) {
+                windows.forEach(win => win.classList.remove('active'));
+                windowEl.classList.add('active');
+                gameState.activeWindow = windowEl;
+            }
+
+            // --- 3. 密码系统 ---
+            function showPasswordPrompt(appName) {
+                activeApp = appName;
+                passwordInput.value = '';
+                passwordError.classList.add('hidden');
+                passwordPrompt.classList.remove('hidden');
+
+                // 从翻译动态设置提示
+                const promptData = translations[currentLang].password[appName];
+                if (promptData) {
+                    promptTitle.innerText = promptData.title;
+                    promptHint.innerText = promptData.hint;
+                }
+            }
+
+            function hidePasswordPrompt() {
+                passwordPrompt.classList.add('hidden');
+                activeApp = null;
+            }
+
+            function checkPassword() {
+                const password = passwordInput.value;
+                if (activeApp === 'mail') {
+                    if (password.toLowerCase() === 'arthur' || password === '亚瑟') {
+                        gameState.mailLocked = false;
+                        hidePasswordPrompt();
+                        openWindow('mail');
+                    } else {
+                        passwordError.classList.remove('hidden');
+                    }
+                } else if (activeApp === 'drive') {
+                    if (password === '1026' || password === '10262022') {
+                        gameState.driveLocked = false;
+                        hidePasswordPrompt();
+                        openWindow('drive');
+                        setTimeout(endGame, 3000);
+                    } else {
+                        passwordError.classList.remove('hidden');
+                    }
+                }
+            }
+            
+            passwordSubmit.addEventListener('click', checkPassword);
+            passwordCancel.addEventListener('click', hidePasswordPrompt);
+            passwordInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    checkPassword();
+                }
+            });
+
+            // --- 4. 事件监听 (图标, 关闭按钮, 窗口激活) ---
+            icons.forEach(icon => {
+                icon.addEventListener('click', (e) => {
+                    const appName = e.currentTarget.dataset.app;
+                    openWindow(appName);
+                });
+            });
+
+            document.querySelectorAll('.close-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    const appName = e.currentTarget.dataset.app;
+                    closeWindow(appName);
+                });
+            });
+            
+            windows.forEach(windowEl => {
+                windowEl.addEventListener('mousedown', () => {
+                    setActiveWindow(windowEl);
+                });
+            });
+            
+            // --- 5. 浏览器 App 内部逻辑 (动态) ---
+            document.querySelectorAll('#window-browser a[data-page]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = e.target.dataset.page;
+                    const pageData = translations[currentLang].browser.pages[pageId];
+                    if (pageData) {
+                        browserContent.innerHTML = `
+                            <h1 class="text-2xl font-bold mb-2">${pageData.title}</h1>
+                            ${pageData.body}
+                        `;
+                    }
+                });
+            });
+
+            // --- 6. 邮件 App 内部逻辑 (动态) ---
+            document.querySelectorAll('.mail-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    document.querySelectorAll('.mail-item').forEach(i => i.classList.remove('bg-blue-600'));
+                    e.currentTarget.classList.add('bg-blue-600');
+                    
+                    const mailId = e.currentTarget.dataset.mail; // e.g., "mail1"
+                    const mailData = translations[currentLang].mail.content[mailId];
+                    const mailUI = translations[currentLang].mail.ui;
+                    
+                    if (mailData) {
+                        mailContent.innerHTML = `
+                            <p class="mb-2"><strong>${mailData.from ? `${mailUI.from}: ${mailData.from}` : ''} ${mailData.to ? `${mailUI.to}: ${mailData.to}` : ''}</strong></p>
+                            <p class="mb-4"><strong>${mailUI.subject}: ${mailData.subject}</strong></p>
+                            <hr class="border-gray-600 mb-4">
+                            ${mailData.body}
+                        `;
+                    }
+                });
+            });
+
+            // --- 7. 窗口拖动逻辑 ---
+            let isDragging = false;
+            let dragTarget = null;
+            let offset = { x: 0, y: 0 };
+
+            document.querySelectorAll('.title-bar').forEach(titleBar => {
+                titleBar.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('title-bar') || e.target.tagName === 'SPAN') {
+                        dragTarget = titleBar.closest('.window');
+                        setActiveWindow(dragTarget);
+                        isDragging = true;
+                        dragTarget.classList.add('dragging');
+                        const rect = dragTarget.getBoundingClientRect();
+                        offset.x = e.clientX - rect.left;
+                        offset.y = e.clientY - rect.top;
+                    }
+                });
+            });
+
+            document.addEventListener('mouseup', () => {
+                if(isDragging && dragTarget) {
+                    isDragging = false;
+                    dragTarget.classList.remove('dragging');
+                    dragTarget = null;
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging && dragTarget) {
+                    let newX = e.clientX - offset.x;
+                    let newY = e.clientY - offset.y;
+                    const maxX = window.innerWidth - dragTarget.offsetWidth;
+                    const maxY = window.innerHeight - dragTarget.offsetHeight;
+                    newX = Math.max(0, Math.min(newX, maxX));
+                    newY = Math.max(0, Math.min(newY, maxY));
+                    dragTarget.style.left = `${newX}px`;
+                    dragTarget.style.top = `${newY}px`;
+                }
+            });
+            
+            // --- 8. 游戏结束 ---
+            function endGame() {
+                document.getElementById('desktop').classList.add('hidden');
+                windows.forEach(win => win.classList.add('hidden'));
+                passwordPrompt.classList.add('hidden');
+                document.getElementById('end-screen').classList.remove('hidden');
+            }
+
+        });
+    </script>
+
+</body>
+</html>
